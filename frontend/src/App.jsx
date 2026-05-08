@@ -266,7 +266,7 @@ export default function App() {
             </div>
           </div>
           <h1 className="text-lg font-bold text-blue-400 leading-snug text-center mt-3">
-            Retinal Fundus<br />Image Generator
+            Retinal Fundus Image Generator
           </h1>
         </div>
 
