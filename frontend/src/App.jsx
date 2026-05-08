@@ -243,14 +243,32 @@ export default function App() {
     <div className="flex flex-col md:flex-row h-screen bg-gray-950 text-white">
       {/* ---- Left Panel ---- */}
       <aside className="w-full md:w-72 lg:w-80 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col p-5 shrink-0">
-        <img
-          src="/CUHK_Emblem.svg"
-          alt="The Chinese University of Hong Kong"
-          className="h-10 mb-3 object-contain"
-        />
-        <h1 className="text-lg font-bold mb-5 text-blue-400 leading-snug">
-          Retinal Fundus<br />Image Generator
-        </h1>
+        <div className="flex flex-col items-center mb-5">
+          <div className="flex items-center gap-3">
+            <img
+              src="/CUHK_Emblem.svg"
+              alt="CUHK"
+              className="h-10 object-contain brightness-150"
+            />
+            <div
+              className="flex flex-col justify-between"
+              style={{ height: "40px", padding: "2px 0" }}
+            >
+              <span
+                className="text-[15px] text-white leading-tight"
+                style={{ fontFamily: "KaiTi, STKaiti, 楷体, serif" }}
+              >
+                香港中文大学
+              </span>
+              <span className="text-[10px] text-white leading-tight">
+                The Chinese University of Hong Kong
+              </span>
+            </div>
+          </div>
+          <h1 className="text-lg font-bold text-blue-400 leading-snug text-center mt-3">
+            Retinal Fundus<br />Image Generator
+          </h1>
+        </div>
 
         <ul className="flex-1 space-y-1 overflow-y-auto">
           {CONDITIONS.map((cond) => (
