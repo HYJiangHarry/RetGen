@@ -29,53 +29,87 @@ os.makedirs(GENERATED_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 CONDITION_MAP = {
-    "Normal fundus": ("normal.png", (200, 80, 50)),
-    "Diabetic retinopathy": ("dr.png", (220, 50, 50)),
-    "Age-related macular degeneration": ("amd.png", (180, 120, 40)),
-    "Glaucoma": ("glaucoma.png", (100, 180, 60)),
-    "Retinal vein occlusion": ("rvo.png", (140, 60, 180)),
-    "Pathological myopia": ("myopia.png", (60, 120, 200)),
-    "Hypertensive retinopathy": ("htr.png", (180, 80, 120)),
+    "Normal fundus": "normal",
+    "Diabetic retinopathy": "dr",
+    "Age-related macular degeneration": "amd",
+    "Glaucoma": "glaucoma",
+    "Retinal vein occlusion": "rvo",
+    "Pathological myopia": "myopia",
+    "Hypertensive retinopathy": "htr",
+    "Cataract": "cataract",
+    "Optic disc disease": "optic_disc",
+    "Macular disease": "macular",
+    "Other disease": "other",
 }
+
+CONDITION_COLORS = {
+    "normal": (200, 80, 50),
+    "dr": (220, 50, 50),
+    "amd": (180, 120, 40),
+    "glaucoma": (100, 180, 60),
+    "rvo": (140, 60, 180),
+    "myopia": (60, 120, 200),
+    "htr": (180, 80, 120),
+    "cataract": (200, 160, 80),
+    "optic_disc": (80, 160, 160),
+    "macular": (160, 100, 160),
+    "other": (120, 120, 120),
+}
+
+
+def _generate_placeholder(folder_path: str, filename: str, color: tuple):
+    img = Image.new("RGB", (512, 512), (20, 20, 30))
+    draw = ImageDraw.Draw(img)
+    cx, cy, r = 256, 256, 200
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(40, 30, 20))
+
+    rng = random.Random(filename)
+    count = rng.randint(80, 160)
+    for _ in range(count):
+        a = rng.uniform(0, 360)
+        d = rng.uniform(10, 190)
+        x = cx + d * math.cos(math.radians(a))
+        y = cy + d * math.sin(math.radians(a))
+        sz = rng.uniform(1.5, 3.5)
+        draw.ellipse([x - sz, y - sz, x + sz, y + sz], fill=color)
+
+    dx = cx + rng.randint(40, 80)
+    dy = cy + rng.randint(-50, -10)
+    ds = rng.randint(25, 35)
+    draw.ellipse([dx - ds, dy - ds, dx + ds, dy + ds], fill=(180, 140, 80))
+
+    img.save(os.path.join(folder_path, filename))
 
 
 def generate_fundus_image(condition: str) -> str:
     """
-    Generate a retinal fundus image for the given condition.
-
-    Currently returns a preset example image.
+    Pick a random fundus image for the given condition from its folder.
+    If the folder is empty, auto-generate 5 placeholder images first.
     TODO: Replace with real diffusion model / fundus image generation model.
     """
-    entry = CONDITION_MAP.get(condition)
-    if entry is None:
+    folder = CONDITION_MAP.get(condition)
+    if folder is None:
         raise ValueError(f"Unknown condition: {condition}")
 
-    filename, color = entry
-    filepath = os.path.join(GENERATED_DIR, filename)
+    folder_path = os.path.join(GENERATED_DIR, folder)
+    os.makedirs(folder_path, exist_ok=True)
 
-    if not os.path.exists(filepath):
-        img = Image.new("RGB", (512, 512), (20, 20, 30))
-        draw = ImageDraw.Draw(img)
+    images = sorted([
+        f for f in os.listdir(folder_path)
+        if f.endswith((".png", ".jpg", ".jpeg"))
+    ])
 
-        cx, cy, r = 256, 256, 200
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(40, 30, 20))
+    if not images:
+        color = CONDITION_COLORS.get(folder, (120, 120, 120))
+        for i in range(5):
+            _generate_placeholder(folder_path, f"img_{i+1}.png", color)
+        images = sorted([
+            f for f in os.listdir(folder_path)
+            if f.endswith((".png", ".jpg", ".jpeg"))
+        ])
 
-        for _ in range(120):
-            angle = random.uniform(0, 360)
-            dist = random.uniform(10, 190)
-            x = cx + dist * math.cos(math.radians(angle))
-            y = cy + dist * math.sin(math.radians(angle))
-            draw.ellipse([x - 2, y - 2, x + 2, y + 2], fill=color)
-
-        disc_x, disc_y = cx + 60, cy - 30
-        draw.ellipse(
-            [disc_x - 30, disc_y - 30, disc_x + 30, disc_y + 30],
-            fill=(180, 140, 80),
-        )
-
-        img.save(filepath)
-
-    return f"/static/generated/{filename}"
+    chosen = random.choice(images)
+    return f"/static/generated/{folder}/{chosen}"
 
 
 class GenerateRequest(BaseModel):
@@ -125,17 +159,7 @@ def generate(req: GenerateRequest):
         )
 
 
-@app.on_event("startup")
-def pregenerate_images():
-    for condition in CONDITION_MAP:
-        try:
-            generate_fundus_image(condition)
-        except Exception as e:
-            print(f"Warning: failed to pre-generate {condition}: {e}")
-
-
 # ---- Frontend SPA serving (production only) ----
-# Dockerfile puts built frontend at backend/static/frontend/
 FRONTEND_BUILT = os.path.isdir(FRONTEND_DIR)
 
 if FRONTEND_BUILT:
@@ -150,10 +174,12 @@ if FRONTEND_BUILT:
             return FileResponse(file_path)
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-    # SPA fallback for any other unmatched route
     @app.get("/{rest_of_path:path}", include_in_schema=False)
     async def spa_fallback(rest_of_path: str):
         if rest_of_path.startswith("api/") or rest_of_path.startswith("static/"):
             from fastapi.responses import JSONResponse
             return JSONResponse({"error": "Not found"}, status_code=404)
+        file_path = os.path.join(FRONTEND_DIR, rest_of_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))

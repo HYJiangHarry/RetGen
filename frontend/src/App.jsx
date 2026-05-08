@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 
 const CONDITIONS = [
   "Normal fundus",
@@ -8,7 +8,120 @@ const CONDITIONS = [
   "Retinal vein occlusion",
   "Pathological myopia",
   "Hypertensive retinopathy",
+  "Cataract",
+  "Optic disc disease",
+  "Macular disease",
+  "Other disease",
 ]
+
+function ZoomableImage({ src, alt }) {
+  const [scale, setScale] = useState(1)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  const dragRef = useRef({ startX: 0, startY: 0, startPos: { x: 0, y: 0 } })
+  const containerRef = useRef(null)
+
+  const adjustScale = useCallback((delta) => {
+    setScale((prev) => {
+      const next = delta > 0 ? prev * 1.15 : prev / 1.15
+      return Math.min(Math.max(next, 0.5), 5)
+    })
+  }, [])
+
+  const handleWheel = useCallback((e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      adjustScale(-e.deltaY)
+    }
+  }, [adjustScale])
+
+  const handleMouseDown = useCallback((e) => {
+    if (scale <= 1) return
+    setDragging(true)
+    dragRef.current = {
+      startX: e.clientX - pos.x,
+      startY: e.clientY - pos.y,
+      startPos: { ...pos },
+    }
+  }, [scale, pos])
+
+  const handleMouseMove = useCallback((e) => {
+    if (!dragging || scale <= 1) return
+    setPos({
+      x: e.clientX - dragRef.current.startX,
+      y: e.clientY - dragRef.current.startY,
+    })
+  }, [dragging, scale])
+
+  const handleMouseUp = useCallback(() => {
+    setDragging(false)
+  }, [])
+
+  const reset = useCallback(() => {
+    setScale(1)
+    setPos({ x: 0, y: 0 })
+  }, [])
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-hidden relative flex items-center justify-center bg-gray-900/50 rounded-2xl border border-gray-800"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "default" }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="max-w-full max-h-full select-none"
+          style={{
+            transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`,
+            transition: dragging ? "none" : "transform 0.08s ease",
+          }}
+          draggable={false}
+        />
+        {scale > 1 && (
+          <div className="absolute top-3 right-3 bg-gray-950/70 text-xs text-gray-400 px-2 py-1 rounded">
+            {Math.round(scale * 100)}%
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-center gap-3 mt-3">
+        <button
+          onClick={() => adjustScale(-1)}
+          className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-lg font-bold disabled:opacity-30"
+          disabled={scale <= 0.5}
+          title="Zoom out"
+        >
+          −
+        </button>
+        <span className="text-sm text-gray-400 w-14 text-center tabular-nums">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          onClick={() => adjustScale(1)}
+          className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-lg font-bold disabled:opacity-30"
+          disabled={scale >= 5}
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          onClick={reset}
+          className="ml-2 px-3 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm"
+          title="Reset zoom"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   const [selected, setSelected] = useState(null)
@@ -60,14 +173,7 @@ export default function App() {
             fill="none"
             viewBox="0 0 24 24"
           >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path
               className="opacity-75"
               fill="currentColor"
@@ -102,15 +208,11 @@ export default function App() {
 
     if (imageUrl && generatedCondition) {
       return (
-        <div className="flex flex-col items-center justify-center h-full">
-          <img
-            src={imageUrl}
-            alt={generatedCondition}
-            className="rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md object-cover"
-          />
-          <p className="mt-4 text-lg font-semibold text-blue-400">
+        <div className="flex flex-col h-full">
+          <p className="text-lg font-semibold text-blue-400 mb-3 shrink-0">
             {generatedCondition}
           </p>
+          <ZoomableImage src={imageUrl} alt={generatedCondition} />
         </div>
       )
     }
@@ -140,8 +242,13 @@ export default function App() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-950 text-white">
       {/* ---- Left Panel ---- */}
-      <aside className="w-full md:w-80 lg:w-96 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col p-6 shrink-0">
-        <h1 className="text-xl font-bold mb-6 text-blue-400 leading-snug">
+      <aside className="w-full md:w-72 lg:w-80 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col p-5 shrink-0">
+        <img
+          src="/CUHK_Emblem.svg"
+          alt="The Chinese University of Hong Kong"
+          className="h-10 mb-3 object-contain"
+        />
+        <h1 className="text-lg font-bold mb-5 text-blue-400 leading-snug">
           Retinal Fundus<br />Image Generator
         </h1>
 
@@ -153,7 +260,7 @@ export default function App() {
                   setSelected(cond)
                   setError(null)
                 }}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   selected === cond
                     ? "bg-blue-600/20 text-blue-400 border border-blue-500/40"
                     : "text-gray-400 hover:text-white hover:bg-gray-800 border border-transparent"
@@ -168,7 +275,7 @@ export default function App() {
         <button
           onClick={handleGenerate}
           disabled={isLoading}
-          className={`mt-6 w-full py-3 rounded-xl font-semibold text-base transition-all ${
+          className={`mt-5 w-full py-3 rounded-xl font-semibold text-base transition-all ${
             isLoading
               ? "bg-gray-700 text-gray-500 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white shadow-lg shadow-blue-600/25"
@@ -179,7 +286,7 @@ export default function App() {
       </aside>
 
       {/* ---- Right Panel ---- */}
-      <main className="flex-1 p-8 min-h-0">
+      <main className="flex-1 p-5 md:p-6 min-h-0 flex flex-col">
         {renderRightPanel()}
       </main>
     </div>
