@@ -1,0 +1,34 @@
+{
+  "source_root": "generated_wandb_samples_fixed12_scheme1_high_quality_50each_b1_gpu0_20260519/checkpoint-60300/generated_wandb_samples",
+  "checkpoint": "checkpoint-60300",
+  "scheme": "scheme1_high_quality_sentence",
+  "folders": {
+    "AMD__scheme1_high_quality_sentence": "amd",
+    "CATARACT__scheme1_high_quality_sentence": "cataract",
+    "DR__scheme1_high_quality_sentence": "dr",
+    "GLAUCOMA__scheme1_high_quality_sentence": "glaucoma",
+    "HTN__scheme1_high_quality_sentence": "htr",
+    "MACULAR_DISEASE__scheme1_high_quality_sentence": "macular",
+    "MYA__scheme1_high_quality_sentence": "myopia",
+    "OPTIC_DISC_DISEASE__scheme1_high_quality_sentence": "optic_disc",
+    "OTHERS__scheme1_high_quality_sentence": "multi_disease",
+    "RVO__scheme1_high_quality_sentence": "rvo",
+    "TOXO__scheme1_high_quality_sentence": "other",
+    "normal_health__scheme1_high_quality_sentence": "normal"
+  },
+  "counts": {
+    "amd": 50,
+    "cataract": 50,
+    "dr": 50,
+    "glaucoma": 50,
+    "htr": 50,
+    "macular": 50,
+    "myopia": 50,
+    "optic_disc": 50,
+    "multi_disease": 50,
+    "rvo": 50,
+    "other": 50,
+    "normal": 50
+  },
+  "total_png": 600
+}
